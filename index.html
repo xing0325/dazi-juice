@@ -547,6 +547,74 @@
     color: #d2d2dc;
   }
 
+  /* ========== Book shelf / TOC ========== */
+  .modal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .modal-head h2 { margin: 0; flex: 1; }
+  .modal button.ghost.small { font-size: 12px; padding: 6px 12px; margin: 0; }
+  .shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .book-card {
+    position: relative;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 120ms, transform 120ms;
+  }
+  body.theme-paper .book-card { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); }
+  .book-card:hover { background: rgba(255,85,119,0.08); transform: translateY(-1px); }
+  .book-ring { flex-shrink: 0; color: var(--fg); }
+  .book-info { min-width: 0; }
+  .book-title { font-family: 'STKaiti', serif; font-size: 17px; letter-spacing: 1px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-meta { color: var(--dim); font-size: 11px; line-height: 1.4; }
+  .book-card .del {
+    position: absolute; top: 6px; right: 8px;
+    background: transparent; color: var(--dim); border: none;
+    cursor: pointer; font-size: 16px; padding: 2px 6px; margin: 0;
+  }
+  .book-card .del:hover { color: var(--wrong); }
+  .toc-sub { color: var(--dim); font-size: 12px; margin-bottom: 12px; }
+  .chapter-list { list-style: none; padding: 0; margin: 0; max-height: 52vh; overflow-y: auto; }
+  .chapter-list li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 12px; border-radius: 9px; cursor: pointer;
+    transition: background 100ms;
+  }
+  .chapter-list li:hover { background: rgba(255,85,119,0.08); }
+  .chapter-list .ch-mark {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; background: rgba(128,128,128,0.18); color: var(--dim);
+  }
+  .chapter-list li.done .ch-mark { background: var(--accent); color: #fff; }
+  .chapter-list .ch-title { flex: 1; font-family: 'STKaiti', serif; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chapter-list .ch-meta { color: var(--dim); font-size: 11px; flex-shrink: 0; }
+  .imp-preview { font-size: 12px; color: var(--dim); margin-bottom: 12px; max-height: 30vh; overflow-y: auto; }
+  .imp-preview-head { color: var(--fg); margin-bottom: 6px; }
+  .imp-preview ol { margin: 0; padding-left: 22px; }
+  .imp-preview .dim { color: var(--dim); }
+
+  /* ========== Hit-feel dashboard ========== */
+  .fx-row { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
+  .fx-row label { width: 84px; flex-shrink: 0; font-size: 14px; color: var(--fg); }
+  .fx-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .fx-val { width: 48px; text-align: right; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .seg { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+  .seg-btn {
+    background: rgba(255,255,255,0.05); color: var(--fg);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
+    padding: 6px 12px; font-size: 13px; cursor: pointer; margin: 0; font-family: inherit;
+  }
+  body.theme-paper .seg-btn { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.12); }
+  .seg-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Result banner */
+  .result-banner { font-size: 13px; color: var(--dim); margin: 10px 0 4px; }
+
+  /* Caret block style needs transparency so text shows through */
+  #caret.caret-block.show { opacity: 0.45; }
+
   /* ========== Result screen ========== */
   .result-grade {
     font-size: 200px;
@@ -685,6 +753,7 @@
     <button id="btn-time" title="时限模式：到点自动结算">⏱ 全文</button>
     <button id="btn-noPunct" title="无标点模式：把所有标点变成空格">，→␣</button>
     <button id="btn-theme" title="主题切换">🎨 深</button>
+    <button id="btn-settings" title="打击感设置">⚙</button>
     <button id="btn-restart" title="重新开始（也可按 Tab+Enter）">↻ 重打</button>
     <button id="btn-mute">🔊</button>
   </div>
@@ -717,28 +786,87 @@
 <!-- Pinyin composition hint (visible only while IME is composing) -->
 <div class="composing-hint" id="composing-hint"></div>
 
-<!-- Library modal -->
+<!-- Library modal: book shelf / chapter TOC / import -->
 <div class="modal-bg" id="modal-library">
   <div class="modal">
-    <h2>📚 文章库</h2>
-    <h3>已保存</h3>
-    <ul class="article-list" id="article-list"></ul>
-    <h3>新增一篇</h3>
-    <input type="text" id="new-title" placeholder="标题（比如：荷塘月色 / 朱慈 · 某一篇）" />
-    <textarea id="new-content" placeholder="把文章内容粘到这里…"></textarea>
-    <div class="format-help">
-      <strong>导入说明</strong>
-      <ul>
-        <li>粘<strong>纯文本</strong>就行（从微信文章、知乎、备份文档复制都行）。不需要 Markdown、不要 HTML。</li>
-        <li>按<strong>句号 / 问号 / 感叹号 / 分号 / 换行</strong>自动分行，每句一行；逗号不分。</li>
-        <li>字数建议 <strong>80&ndash;600 字</strong>。太短打完不爽，太长容易疲劳。长文可以拆成几段分次导入。</li>
-        <li>标点用<strong>中文标点</strong>（，。！？；""''）匹配最自然。</li>
-        <li>表情、图、特殊符号会原样保留（但你得真的打得出来，否则会卡）。</li>
-      </ul>
-      <p class="tip-line">想加<strong>朱慈、史铁生、林徽因</strong>这类作者？朱慈 2024 年注销了知乎，正文得你自己从备份（archive.today / 微博转载 / 本地保存）粘过来。</p>
+    <!-- View: shelf -->
+    <div id="view-shelf">
+      <div class="modal-head">
+        <h2>📚 书架</h2>
+        <button class="ghost small" id="btn-goto-import">＋ 导入新书</button>
+      </div>
+      <div class="shelf" id="shelf"></div>
+      <button class="ghost" id="btn-close-library">关闭</button>
     </div>
-    <button id="btn-save-article">保存并开打</button>
-    <button class="ghost" id="btn-close-library">关闭</button>
+
+    <!-- View: table of contents -->
+    <div id="view-toc" style="display:none;">
+      <div class="modal-head">
+        <button class="ghost small" id="btn-toc-back">‹ 书架</button>
+        <h2 id="toc-title">书名</h2>
+      </div>
+      <div class="toc-sub" id="toc-sub"></div>
+      <ul class="chapter-list" id="chapter-list"></ul>
+    </div>
+
+    <!-- View: import -->
+    <div id="view-import" style="display:none;">
+      <div class="modal-head">
+        <button class="ghost small" id="btn-import-back">‹ 书架</button>
+        <h2>导入新书</h2>
+      </div>
+      <input type="text" id="imp-title" placeholder="书名（必填，比如：刷新 / 蒙田随笔）" />
+      <input type="text" id="imp-author" placeholder="作者（选填，比如：萨提亚·纳德拉）" />
+      <textarea id="imp-content" placeholder="把整本书（或几章）的纯文本粘到这里…"></textarea>
+      <div class="format-help">
+        <strong>自动切章规则</strong>
+        <ul>
+          <li>检测到<strong>「第X章 / 第X回 / Chapter N / 卷一」</strong>这类标题行会按它切成章节。</li>
+          <li>没有章节标记时，按<strong>空行（段落）</strong>聚合，再按长度切成约每章 600 字。</li>
+          <li>纯文本即可，不要 Markdown/HTML。版权书只存在你本地浏览器，<strong>不会上传</strong>。</li>
+        </ul>
+      </div>
+      <div id="imp-preview" class="imp-preview"></div>
+      <button id="btn-import-do">切章预览 → 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings (hit-feel) dashboard -->
+<div class="modal-bg" id="modal-settings">
+  <div class="modal">
+    <div class="modal-head"><h2>⚙ 打击感设置</h2></div>
+    <div class="fx-row">
+      <label>粒子量</label>
+      <input type="range" id="fx-particles" min="0" max="2" step="0.25" />
+      <span class="fx-val" id="fx-particles-val"></span>
+    </div>
+    <div class="fx-row">
+      <label>屏幕震动</label>
+      <div class="seg" id="fx-shake"></div>
+    </div>
+    <div class="fx-row">
+      <label>音效音色</label>
+      <div class="seg" id="fx-soundPack"></div>
+    </div>
+    <div class="fx-row">
+      <label>音量</label>
+      <input type="range" id="fx-volume" min="0" max="0.4" step="0.02" />
+      <span class="fx-val" id="fx-volume-val"></span>
+    </div>
+    <div class="fx-row">
+      <label>Combo 特效</label>
+      <div class="seg" id="fx-combo"></div>
+    </div>
+    <div class="fx-row">
+      <label>光标样式</label>
+      <div class="seg" id="fx-caretStyle"></div>
+    </div>
+    <div class="result-actions" style="margin-top:18px;">
+      <button id="btn-fx-test">试打一下</button>
+      <button class="ghost" id="btn-fx-reset">恢复默认</button>
+      <button class="ghost" id="btn-settings-close">关闭</button>
+    </div>
   </div>
 </div>
 
@@ -757,9 +885,11 @@
       <div id="sparkline-svg"></div>
       <div class="spark-meta" id="spark-meta"></div>
     </div>
+    <div class="result-banner" id="result-banner"></div>
     <div class="result-actions">
+      <button id="btn-next" style="display:none;">下一章 ▶</button>
       <button id="btn-retry">再来一次 (Tab+Enter)</button>
-      <button class="ghost" id="btn-change">换文章</button>
+      <button class="ghost" id="btn-change">书架</button>
     </div>
   </div>
 </div>
@@ -769,42 +899,43 @@
   <h1>打字爽</h1>
   <div class="subtitle">D A Z I &nbsp; J U I C E</div>
   <div>
-    <button id="btn-start-default">开打（示例文章）</button>
-    <button class="ghost" id="btn-start-library">选文章 / 导入</button>
+    <button id="btn-start-resume" style="display:none;">▶ 续打</button>
+    <button id="btn-start-library">📚 选书 / 导入</button>
+    <button class="ghost" id="btn-start-default">先试个示例</button>
   </div>
   <div class="tip">
-    把你喜欢的文章粘进去，一边打一边背。<br>
-    用普通中文输入法直接输入即可，IME 兼容已处理。<br>
-    错字会变红+下划波浪线，连击会爆炸。
+    以「打完一整本书」为目标：导入你买的电子书 → 自动切章 → 选章节打。<br>
+    用普通中文输入法直接打就行，IME 已处理；打对的字锁定，错字红波浪线。<br>
+    版权书只存在你本地浏览器，不会上传。
   </div>
 </div>
 
 <script>
 // ============================================================
-// Data: default articles
+// Data: a public-domain sample book (demo). Real books are imported by the user.
 // ============================================================
-const DEFAULT_ARTICLES = [
-  {
-    id: 'def-luchai',
-    title: '鹿柴 · 王维',
-    content: '空山不见人，但闻人语响。返景入深林，复照青苔上。'
-  },
-  {
-    id: 'def-deng',
-    title: '登鹳雀楼 · 王之涣',
-    content: '白日依山尽，黄河入海流。欲穷千里目，更上一层楼。'
-  },
-  {
-    id: 'def-hetang',
-    title: '荷塘月色 · 节选',
-    content: '曲曲折折的荷塘上面，弥望的是田田的叶子。叶子出水很高，像亭亭的舞女的裙。层层的叶子中间，零星地点缀着些白花，有袅娜地开着的，有羞涩地打着朵儿的；正如一粒粒的明珠，又如碧天里的星星，又如刚出浴的美人。'
-  },
-  {
-    id: 'def-buyu',
-    title: '卜算子 · 咏梅 · 陆游',
-    content: '驿外断桥边，寂寞开无主。已是黄昏独自愁，更着风和雨。无意苦争春，一任群芳妒。零落成泥碾作尘，只有香如故。'
-  },
-];
+const SAMPLE_BOOK = {
+  id: 'sample-poems',
+  title: '示例 · 古诗文四首',
+  author: '公有领域',
+  builtin: true,
+  chapters: [
+    { id: 'c-luchai', title: '鹿柴 · 王维', content: '空山不见人，但闻人语响。返景入深林，复照青苔上。' },
+    { id: 'c-deng', title: '登鹳雀楼 · 王之涣', content: '白日依山尽，黄河入海流。欲穷千里目，更上一层楼。' },
+    { id: 'c-hetang', title: '荷塘月色 · 节选', content: '曲曲折折的荷塘上面，弥望的是田田的叶子。叶子出水很高，像亭亭的舞女的裙。层层的叶子中间，零星地点缀着些白花，有袅娜地开着的，有羞涩地打着朵儿的；正如一粒粒的明珠，又如碧天里的星星，又如刚出浴的美人。' },
+    { id: 'c-buyu', title: '卜算子 · 咏梅 · 陆游', content: '驿外断桥边，寂寞开无主。已是黄昏独自愁，更着风和雨。无意苦争春，一任群芳妒。零落成泥碾作尘，只有香如故。' },
+  ],
+};
+
+// Hit-feel (打击感) default settings
+const DEFAULT_FX = {
+  particles: 1,      // 0 .. 2 multiplier on particle count
+  shake: 1,          // 0 = off, 1 = on
+  combo: true,       // combo number + milestone effects
+  volume: 0.15,      // base oscillator gain
+  soundPack: 'tri',  // 'off' | 'tri'(电子) | 'square'(机械) | 'sine'(木鱼)
+  caretStyle: 'bar', // 'bar' | 'underline' | 'block'
+};
 
 // ============================================================
 // State + Settings
@@ -834,6 +965,9 @@ const state = {
   lastSampleT: -1,
   comboTimer: null,
   tickHandle: null,
+  currentBook: null,    // { id, title, author, chapters }
+  currentChapter: null, // { id, title, content }
+  fx: Object.assign({}, DEFAULT_FX),
 };
 
 const THEMES = [
@@ -875,20 +1009,37 @@ function playTone({ freq = 600, dur = 0.08, type = 'sine', gain = 0.18, attack =
   o.stop(t + dur + 0.02);
 }
 function soundCorrect() {
-  const baseFreq = 600 + Math.min(state.combo * 18, 1400);
-  playTone({ freq: baseFreq, dur: 0.07, type: 'triangle', gain: 0.15 });
+  const pack = state.fx.soundPack;
+  if (pack === 'off') return;
+  const vol = state.fx.volume;
+  if (pack === 'sine') {
+    // 木鱼: soft low "tok", pitch barely rises
+    playTone({ freq: 320 + Math.min(state.combo * 4, 160), dur: 0.09, type: 'sine', gain: vol * 1.2 });
+  } else if (pack === 'square') {
+    // 机械: clicky, short
+    playTone({ freq: 800 + Math.min(state.combo * 20, 1400), dur: 0.04, type: 'square', gain: vol * 0.8 });
+  } else {
+    // 电子 (triangle, default)
+    playTone({ freq: 600 + Math.min(state.combo * 18, 1400), dur: 0.07, type: 'triangle', gain: vol });
+  }
 }
 function soundError() {
-  playTone({ freq: 130, dur: 0.18, type: 'square', gain: 0.18 });
-  setTimeout(() => playTone({ freq: 90, dur: 0.14, type: 'square', gain: 0.14 }), 60);
+  if (state.fx.soundPack === 'off') return;
+  const vol = state.fx.volume;
+  playTone({ freq: 130, dur: 0.18, type: 'square', gain: vol * 1.1 });
+  setTimeout(() => playTone({ freq: 90, dur: 0.14, type: 'square', gain: vol * 0.9 }), 60);
 }
 function soundMilestone() {
+  if (state.fx.soundPack === 'off') return;
+  const vol = state.fx.volume;
   const notes = [523, 659, 784, 1047];
-  notes.forEach((f, i) => setTimeout(() => playTone({ freq: f, dur: 0.12, type: 'triangle', gain: 0.18 }), i * 60));
+  notes.forEach((f, i) => setTimeout(() => playTone({ freq: f, dur: 0.12, type: 'triangle', gain: vol * 1.1 }), i * 60));
 }
 function soundFinish() {
+  if (state.fx.soundPack === 'off') return;
+  const vol = Math.max(state.fx.volume, 0.12);
   const notes = [523, 659, 784, 1047, 1319];
-  notes.forEach((f, i) => setTimeout(() => playTone({ freq: f, dur: 0.18, type: 'triangle', gain: 0.2 }), i * 90));
+  notes.forEach((f, i) => setTimeout(() => playTone({ freq: f, dur: 0.18, type: 'triangle', gain: vol * 1.2 }), i * 90));
 }
 
 // ============================================================
@@ -906,24 +1057,83 @@ function saveAll(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
   catch (e) { console.warn('save fail', e); }
 }
-function getAllArticles() {
-  const data = loadAll();
-  const userArticles = data.articles || [];
-  return [...userArticles, ...DEFAULT_ARTICLES];
+// --- Books ---
+function migrateLegacy(data) {
+  // v1 had data.articles = [{id,title,content}]. Fold them into one "我的导入" book.
+  if (data.articles && data.articles.length && !data._migrated) {
+    data.books = data.books || [];
+    const chapters = data.articles.map((a, i) => ({
+      id: 'mc-' + (a.id || i), title: a.title || ('第' + (i + 1) + '篇'), content: a.content || ''
+    }));
+    data.books.unshift({ id: 'b-legacy', title: '我的导入', author: '', chapters, createdAt: Date.now() });
+    data._migrated = true;
+    delete data.articles;
+    saveAll(data);
+  }
+  return data;
 }
-function saveUserArticle(title, content) {
-  const data = loadAll();
-  const id = 'u-' + Date.now();
-  const item = { id, title: title.trim() || '未命名', content: content.trim(), createdAt: Date.now() };
-  data.articles = data.articles || [];
-  data.articles.unshift(item);
-  saveAll(data);
-  return item;
+function getUserBooks() {
+  const data = migrateLegacy(loadAll());
+  return data.books || [];
 }
-function deleteUserArticle(id) {
+function getAllBooks() {
+  return [...getUserBooks(), SAMPLE_BOOK];
+}
+function getBookById(id) {
+  return getAllBooks().find(b => b.id === id) || null;
+}
+function saveBook(book) {
   const data = loadAll();
-  data.articles = (data.articles || []).filter(a => a.id !== id);
+  data.books = data.books || [];
+  data.books.unshift(book);
   saveAll(data);
+  return book;
+}
+function deleteBook(id) {
+  const data = loadAll();
+  data.books = (data.books || []).filter(b => b.id !== id);
+  saveAll(data);
+}
+
+// --- Progress ---
+function getProgress() {
+  const data = loadAll();
+  return data.progress || {};
+}
+function recordProgress(bookId, chapterId, info) {
+  if (!bookId || !chapterId) return;
+  const data = loadAll();
+  data.progress = data.progress || {};
+  data.progress[bookId] = data.progress[bookId] || {};
+  const prev = data.progress[bookId][chapterId] || {};
+  data.progress[bookId][chapterId] = {
+    done: true,
+    bestCpm: Math.max(prev.bestCpm || 0, info.cpm || 0),
+    bestAcc: Math.max(prev.bestAcc || 0, info.acc || 0),
+    completedAt: Date.now(),
+  };
+  data.lastPos = { bookId, chapterId };
+  saveAll(data);
+}
+function saveLastPos(bookId, chapterId) {
+  const data = loadAll();
+  data.lastPos = { bookId, chapterId };
+  saveAll(data);
+}
+function getLastPos() { return loadAll().lastPos || null; }
+function bookCompletion(book) {
+  const prog = getProgress()[book.id] || {};
+  const done = book.chapters.filter(c => prog[c.id] && prog[c.id].done).length;
+  return { done, total: book.chapters.length, pct: book.chapters.length ? Math.round(done / book.chapters.length * 100) : 0 };
+}
+
+// --- Hit-feel settings ---
+function getFx() {
+  const data = loadAll();
+  return Object.assign({}, DEFAULT_FX, data.fx || {});
+}
+function saveFx(fx) {
+  const data = loadAll(); data.fx = fx; saveAll(data);
 }
 function saveMuted(v) {
   const data = loadAll(); data.muted = v; saveAll(data);
@@ -1105,26 +1315,51 @@ function loadArticle(article) {
   });
 }
 
+// Load a chapter within a book, carrying context for progress + "next chapter".
+function loadChapter(book, chapter) {
+  state.currentBook = book;
+  state.currentChapter = chapter;
+  saveLastPos(book.id, chapter.id);
+  loadArticle(chapter);
+}
+
+// Find the next chapter after the current one (or null at end of book)
+function nextChapter() {
+  if (!state.currentBook || !state.currentChapter) return null;
+  const idx = state.currentBook.chapters.findIndex(c => c.id === state.currentChapter.id);
+  if (idx < 0 || idx + 1 >= state.currentBook.chapters.length) return null;
+  return state.currentBook.chapters[idx + 1];
+}
+
 // ============================================================
 // Floating caret (smooth Monkeytype-style)
 // ============================================================
 const caretEl = document.getElementById('caret');
 function updateCaret() {
   if (!state.article || state.finished) { caretEl.classList.remove('show'); return; }
-  const el = state.chars[state.cursor];
-  if (!el) {
-    // Cursor past end — anchor to last char's right edge
-    const last = state.chars[state.target.length - 1];
-    if (!last) { caretEl.classList.remove('show'); return; }
-    const r = last.getBoundingClientRect();
-    caretEl.style.transform = `translate(${r.right + 1}px, ${r.top}px)`;
-    caretEl.style.height = r.height + 'px';
-    caretEl.classList.add('show');
-    return;
-  }
+  let el = state.chars[state.cursor];
+  let atEnd = false;
+  if (!el) { el = state.chars[state.target.length - 1]; atEnd = true; }
+  if (!el) { caretEl.classList.remove('show'); return; }
   const r = el.getBoundingClientRect();
-  caretEl.style.transform = `translate(${r.left - 2}px, ${r.top}px)`;
-  caretEl.style.height = r.height + 'px';
+  const style = state.fx.caretStyle || 'bar';
+  let x, y, w, h;
+  if (style === 'underline') {
+    x = atEnd ? r.right + 1 : r.left;
+    y = r.bottom - 3;
+    w = r.width; h = 3;
+  } else if (style === 'block') {
+    x = atEnd ? r.right + 1 : r.left;
+    y = r.top;
+    w = r.width || 16; h = r.height;
+  } else { // bar
+    x = atEnd ? r.right + 1 : r.left - 2;
+    y = r.top;
+    w = 3; h = r.height;
+  }
+  caretEl.style.transform = `translate(${x}px, ${y}px)`;
+  caretEl.style.width = w + 'px';
+  caretEl.style.height = h + 'px';
   caretEl.classList.add('show');
 }
 
@@ -1346,13 +1581,12 @@ function onCorrect(i) {
   soundCorrect();
   const counts = [2, 3, 5, 7];
   spawnParticles(state.chars[i], counts[lv]);
-  if (lv >= 2) shake('s');
+  if (lv >= 2 && state.fx.shake) shake('s');
 }
 
 function onError(i) {
   soundError();
   spawnParticles(state.chars[i], 3, '#ef4444');
-  // No more full red flash; tint via gentle pulse on body border only at high combo loss
 }
 
 function shake(level) {
@@ -1365,6 +1599,7 @@ function shake(level) {
 }
 
 function onCombo() {
+  if (!state.fx.combo) { comboWrap.classList.add('hidden'); speedLines.classList.remove('on'); return; }
   comboNum.textContent = state.combo;
   if (state.combo > 0) {
     comboWrap.classList.remove('hidden');
@@ -1409,6 +1644,8 @@ function showMilestoneTag(combo) {
 const PARTICLE_COLORS = ['#ff5577', '#ffaa44', '#ffd24d', '#ffffff', '#4ade80'];
 function spawnParticles(charEl, count = 6, forceColor = null) {
   if (!charEl) return;
+  count = Math.round(count * (state.fx.particles != null ? state.fx.particles : 1));
+  if (count <= 0) return;
   const rect = charEl.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
@@ -1553,69 +1790,225 @@ function showResult() {
   const spark = buildSparkline(state.cpmHistory);
   $('sparkline-svg').innerHTML = spark.svg;
   $('spark-meta').innerHTML = spark.meta;
+
+  // Record book progress + next-chapter button
+  const banner = $('result-banner');
+  const nextBtn = $('btn-next');
+  if (state.currentBook && state.currentChapter && !TIME_MODES[state.timeModeIdx].dur) {
+    recordProgress(state.currentBook.id, state.currentChapter.id, { cpm, acc });
+    const comp = bookCompletion(state.currentBook);
+    const nxt = nextChapter();
+    banner.style.display = '';
+    banner.innerHTML = nxt
+      ? `《${escapeHtml(state.currentBook.title)}》进度 ${comp.pct}%（${comp.done}/${comp.total} 章）`
+      : `🎉 《${escapeHtml(state.currentBook.title)}》全书完成！`;
+    nextBtn.style.display = nxt ? '' : 'none';
+  } else {
+    banner.style.display = 'none';
+    nextBtn.style.display = 'none';
+  }
+
   $('modal-result').classList.add('show');
   caretEl.classList.remove('show');
 }
 
 // ============================================================
-// Library UI
+// Library UI: book shelf -> chapter TOC -> import
 // ============================================================
-function renderLibrary() {
-  const list = $('article-list');
-  list.innerHTML = '';
-  const articles = getAllArticles();
-  articles.forEach(a => {
-    const li = document.createElement('li');
-    const meta = a.id.startsWith('u-') ? `自定义 · ${a.content.length}字` : `示例 · ${a.content.length}字`;
-    li.innerHTML = `<div>
-        <div class="title">${escapeHtml(a.title)}</div>
-        <div class="meta">${meta}</div>
-      </div>`;
-    const right = document.createElement('div');
-    if (a.id.startsWith('u-')) {
-      const del = document.createElement('button');
-      del.className = 'del';
-      del.textContent = '×';
-      del.onclick = (e) => {
-        e.stopPropagation();
-        if (confirm('删掉这篇？')) { deleteUserArticle(a.id); renderLibrary(); }
-      };
-      right.appendChild(del);
-    }
-    li.appendChild(right);
-    li.onclick = () => {
-      $('modal-library').classList.remove('show');
-      $('welcome').classList.add('hidden');
-      loadArticle(a);
-    };
-    list.appendChild(li);
-  });
-  if (articles.length === 0) {
-    list.innerHTML = '<li style="color:var(--dim)">还没有文章</li>';
-  }
-}
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
 }
 
+function showLibraryView(view) {
+  $('view-shelf').style.display = view === 'shelf' ? '' : 'none';
+  $('view-toc').style.display = view === 'toc' ? '' : 'none';
+  $('view-import').style.display = view === 'import' ? '' : 'none';
+}
+function openLibrary() {
+  renderShelf();
+  showLibraryView('shelf');
+  $('modal-library').classList.add('show');
+}
+
+function progressRing(pct) {
+  const r = 16, c = 2 * Math.PI * r;
+  const off = c * (1 - pct / 100);
+  return `<svg class="ring" width="40" height="40" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="${r}" fill="none" stroke="rgba(128,128,128,0.25)" stroke-width="3"/>
+    <circle cx="20" cy="20" r="${r}" fill="none" stroke="var(--accent)" stroke-width="3"
+      stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"
+      stroke-linecap="round" transform="rotate(-90 20 20)"/>
+    <text x="20" y="24" text-anchor="middle" font-size="10" fill="currentColor">${pct}%</text>
+  </svg>`;
+}
+
+function renderShelf() {
+  const shelf = $('shelf');
+  shelf.innerHTML = '';
+  const books = getAllBooks();
+  books.forEach(book => {
+    const comp = bookCompletion(book);
+    const totalChars = book.chapters.reduce((s, c) => s + (c.content || '').length, 0);
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.innerHTML = `
+      <div class="book-ring">${progressRing(comp.pct)}</div>
+      <div class="book-info">
+        <div class="book-title">${escapeHtml(book.title)}</div>
+        <div class="book-meta">${book.author ? escapeHtml(book.author) + ' · ' : ''}${book.chapters.length} 章 · ${totalChars} 字 · 已完成 ${comp.done}/${comp.total}</div>
+      </div>`;
+    if (!book.builtin) {
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '×';
+      del.title = '删除这本书';
+      del.onclick = (e) => { e.stopPropagation(); if (confirm('删掉《' + book.title + '》及其进度？')) { deleteBook(book.id); renderShelf(); } };
+      card.appendChild(del);
+    }
+    card.onclick = () => openTOC(book);
+    shelf.appendChild(card);
+  });
+  if (books.length === 0) shelf.innerHTML = '<div style="color:var(--dim);padding:20px;">书架空的，点右上「＋ 导入新书」</div>';
+}
+
+let tocBook = null;
+function openTOC(book) {
+  tocBook = book;
+  $('toc-title').textContent = book.title;
+  const comp = bookCompletion(book);
+  $('toc-sub').textContent = `${book.author ? book.author + ' · ' : ''}${book.chapters.length} 章 · 已完成 ${comp.done}/${comp.total}（${comp.pct}%）`;
+  renderTOC(book);
+  showLibraryView('toc');
+}
+function renderTOC(book) {
+  const list = $('chapter-list');
+  list.innerHTML = '';
+  const prog = getProgress()[book.id] || {};
+  book.chapters.forEach((ch, i) => {
+    const p = prog[ch.id];
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="ch-mark">${p && p.done ? '✓' : (i + 1)}</span>
+      <span class="ch-title">${escapeHtml(ch.title)}</span>
+      <span class="ch-meta">${(ch.content || '').length}字${p && p.bestCpm ? ' · 最佳 ' + p.bestCpm + ' cpm' : ''}</span>`;
+    if (p && p.done) li.classList.add('done');
+    li.onclick = () => {
+      $('modal-library').classList.remove('show');
+      $('welcome').classList.add('hidden');
+      ensureAudio();
+      loadChapter(book, ch);
+    };
+    list.appendChild(li);
+  });
+}
+
+// ---- Smart chapter splitting ----
+function splitIntoChapters(text) {
+  const norm = text.replace(/\r\n?/g, '\n').trim();
+  // Try heading-based split: lines like 第X章/第X回/卷X/Chapter N / N、标题
+  const headingRe = /^(\s*(第\s*[0-9一二三四五六七八九十百零两]+\s*[章回节卷篇]|卷\s*[0-9一二三四五六七八九十]+|Chapter\s+\d+|CHAPTER\s+\d+)[^\n]*)$/;
+  const lines = norm.split('\n');
+  const headingIdx = [];
+  lines.forEach((ln, i) => { if (headingRe.test(ln.trim()) && ln.trim().length <= 30) headingIdx.push(i); });
+  const chapters = [];
+  if (headingIdx.length >= 2) {
+    for (let h = 0; h < headingIdx.length; h++) {
+      const start = headingIdx[h];
+      const end = h + 1 < headingIdx.length ? headingIdx[h + 1] : lines.length;
+      const title = lines[start].trim();
+      const body = lines.slice(start + 1, end).join('\n').trim();
+      if (body) chapters.push({ title, content: body });
+    }
+    if (chapters.length) return finalizeChapters(chapters);
+  }
+  // No headings: split by length into ~600-char chapters at paragraph boundaries
+  const paras = norm.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const CHUNK = 600;
+  let buf = '', n = 1;
+  const pushBuf = () => { if (buf.trim()) { chapters.push({ title: '第 ' + n + ' 节', content: buf.trim() }); n++; buf = ''; } };
+  for (const p of paras) {
+    if ((buf + '\n' + p).length > CHUNK && buf) pushBuf();
+    buf += (buf ? '\n' : '') + p;
+  }
+  pushBuf();
+  if (!chapters.length) chapters.push({ title: '全文', content: norm });
+  return finalizeChapters(chapters);
+}
+function finalizeChapters(chapters) {
+  return chapters.map((c, i) => ({ id: 'ch-' + Date.now() + '-' + i, title: c.title || ('第 ' + (i + 1) + ' 章'), content: c.content }));
+}
+
+// ============================================================
+// Hit-feel dashboard
+// ============================================================
+function renderSeg(containerId, options, current, onPick) {
+  const el = $(containerId);
+  el.innerHTML = '';
+  options.forEach(opt => {
+    const b = document.createElement('button');
+    b.textContent = opt.label;
+    b.className = 'seg-btn' + (opt.val === current ? ' on' : '');
+    b.onclick = () => { onPick(opt.val); };
+    el.appendChild(b);
+  });
+}
+function renderFxDashboard() {
+  const fx = state.fx;
+  // particles slider
+  $('fx-particles').value = fx.particles;
+  $('fx-particles-val').textContent = Math.round(fx.particles * 100) + '%';
+  $('fx-particles').oninput = (e) => { fx.particles = parseFloat(e.target.value); $('fx-particles-val').textContent = Math.round(fx.particles*100)+'%'; saveFx(fx); };
+  // volume slider
+  $('fx-volume').value = fx.volume;
+  $('fx-volume-val').textContent = Math.round(fx.volume / 0.4 * 100) + '%';
+  $('fx-volume').oninput = (e) => { fx.volume = parseFloat(e.target.value); $('fx-volume-val').textContent = Math.round(fx.volume/0.4*100)+'%'; saveFx(fx); ensureAudio(); soundCorrect(); };
+  // shake
+  renderSeg('fx-shake', [{label:'关',val:0},{label:'开',val:1}], fx.shake, (v)=>{ fx.shake=v; saveFx(fx); renderFxDashboard(); });
+  // sound pack
+  renderSeg('fx-soundPack', [{label:'静音',val:'off'},{label:'电子',val:'tri'},{label:'机械',val:'square'},{label:'木鱼',val:'sine'}], fx.soundPack, (v)=>{ fx.soundPack=v; saveFx(fx); renderFxDashboard(); ensureAudio(); soundCorrect(); });
+  // combo
+  renderSeg('fx-combo', [{label:'关',val:false},{label:'开',val:true}], fx.combo, (v)=>{ fx.combo=v; saveFx(fx); renderFxDashboard(); });
+  // caret style
+  renderSeg('fx-caretStyle', [{label:'竖线',val:'bar'},{label:'下划',val:'underline'},{label:'方块',val:'block'}], fx.caretStyle, (v)=>{ fx.caretStyle=v; saveFx(fx); applyCaretStyle(); renderFxDashboard(); });
+}
+function applyCaretStyle() {
+  caretEl.classList.remove('caret-bar', 'caret-underline', 'caret-block');
+  caretEl.classList.add('caret-' + (state.fx.caretStyle || 'bar'));
+  updateCaret();
+}
+
 // ============================================================
 // Wire UI
 // ============================================================
-$('btn-library').onclick = () => { renderLibrary(); $('modal-library').classList.add('show'); };
+$('btn-library').onclick = () => openLibrary();
 $('btn-close-library').onclick = () => $('modal-library').classList.remove('show');
-$('btn-save-article').onclick = () => {
-  const title = $('new-title').value.trim();
-  const content = $('new-content').value.trim();
-  if (!content) { alert('内容空着呢'); return; }
-  const item = saveUserArticle(title, content);
-  $('new-title').value = '';
-  $('new-content').value = '';
-  $('modal-library').classList.remove('show');
-  $('welcome').classList.add('hidden');
-  loadArticle(item);
+$('btn-goto-import').onclick = () => { $('imp-preview').innerHTML = ''; showLibraryView('import'); };
+$('btn-toc-back').onclick = () => { renderShelf(); showLibraryView('shelf'); };
+$('btn-import-back').onclick = () => { renderShelf(); showLibraryView('shelf'); };
+$('btn-import-do').onclick = () => {
+  const title = $('imp-title').value.trim();
+  const author = $('imp-author').value.trim();
+  const content = $('imp-content').value;
+  if (!title) { alert('书名必填'); return; }
+  if (!content.trim()) { alert('内容空着呢'); return; }
+  const chapters = splitIntoChapters(content);
+  const preview = $('imp-preview');
+  // First click previews; second click (with same content) confirms.
+  if (preview.dataset.confirmed !== '1') {
+    preview.innerHTML = `<div class="imp-preview-head">切成 ${chapters.length} 章，确认无误再点一次保存：</div>` +
+      '<ol>' + chapters.slice(0, 30).map(c => `<li>${escapeHtml(c.title)} <span class="dim">(${c.content.length}字)</span></li>`).join('') +
+      (chapters.length > 30 ? `<li>… 共 ${chapters.length} 章</li>` : '') + '</ol>';
+    preview.dataset.confirmed = '1';
+    $('btn-import-do').textContent = '确认保存 ✓';
+    return;
+  }
+  const book = { id: 'b-' + Date.now(), title, author, chapters, createdAt: Date.now() };
+  saveBook(book);
+  $('imp-title').value = ''; $('imp-author').value = ''; $('imp-content').value = '';
+  preview.innerHTML = ''; preview.dataset.confirmed = ''; $('btn-import-do').textContent = '切章预览 → 保存';
+  openTOC(getBookById(book.id));
 };
 $('btn-restart').onclick = () => {
   if (state.article) loadArticle(state.article);
@@ -1624,10 +2017,15 @@ $('btn-retry').onclick = () => {
   $('modal-result').classList.remove('show');
   if (state.article) loadArticle(state.article);
 };
+$('btn-next').onclick = () => {
+  const nxt = nextChapter();
+  $('modal-result').classList.remove('show');
+  if (nxt && state.currentBook) loadChapter(state.currentBook, nxt);
+};
 $('btn-change').onclick = () => {
   $('modal-result').classList.remove('show');
-  renderLibrary();
-  $('modal-library').classList.add('show');
+  if (state.currentBook) openTOC(getBookById(state.currentBook.id) || state.currentBook);
+  else openLibrary();
 };
 $('btn-mute').onclick = () => {
   state.muted = !state.muted;
@@ -1664,12 +2062,33 @@ $('btn-time').onclick = () => {
 $('btn-start-default').onclick = () => {
   ensureAudio();
   $('welcome').classList.add('hidden');
-  loadArticle(DEFAULT_ARTICLES[0]);
+  loadChapter(SAMPLE_BOOK, SAMPLE_BOOK.chapters[0]);
 };
 $('btn-start-library').onclick = () => {
   ensureAudio();
-  renderLibrary();
-  $('modal-library').classList.add('show');
+  $('welcome').classList.add('hidden');
+  openLibrary();
+};
+$('btn-start-resume').onclick = () => {
+  ensureAudio();
+  const pos = getLastPos();
+  if (!pos) return;
+  const book = getBookById(pos.bookId);
+  const ch = book && book.chapters.find(c => c.id === pos.chapterId);
+  if (book && ch) { $('welcome').classList.add('hidden'); loadChapter(book, ch); }
+  else openLibrary();
+};
+// Settings (hit-feel dashboard)
+$('btn-settings').onclick = () => { renderFxDashboard(); $('modal-settings').classList.add('show'); };
+$('btn-settings-close').onclick = () => $('modal-settings').classList.remove('show');
+$('btn-fx-reset').onclick = () => { state.fx = Object.assign({}, DEFAULT_FX); saveFx(state.fx); renderFxDashboard(); };
+$('btn-fx-test').onclick = () => {
+  ensureAudio();
+  // quick burst at screen center
+  const c = { getBoundingClientRect: () => ({ left: innerWidth/2-8, top: innerHeight/2-8, width: 16, height: 16 }) };
+  state.combo = 30;
+  for (let k=0;k<5;k++) setTimeout(()=>{ spawnParticles(c, 6); soundCorrect(); if(state.fx.shake) shake('s'); }, k*90);
+  state.combo = 0;
 };
 
 // Focus management: click anywhere to focus input, show hint on blur
@@ -1717,14 +2136,20 @@ document.addEventListener('keydown', (e) => {
   state.layout = (data.layout === 'phrase') ? 'phrase' : 'flow';
   state.themeIdx = Number.isInteger(data.themeIdx) ? data.themeIdx : 0;
   state.timeModeIdx = Number.isInteger(data.timeModeIdx) ? data.timeModeIdx : 0;
+  state.timeModeIdx = 0; // always start in full-text mode (time mode is opt-in per session)
   state.maxCorrectPrefix = 0;
+  state.fx = getFx();
   $('btn-mute').textContent = state.muted ? '🔇' : '🔊';
   $('btn-noPunct').classList.toggle('active', state.noPunct);
   applyLayoutBtn();
   applyTheme(state.themeIdx);
+  applyCaretStyle();
   const tm = TIME_MODES[state.timeModeIdx];
   $('btn-time').textContent = tm.label;
   $('btn-time').classList.toggle('active', !!tm.dur);
+  // Show 续打 if there's a saved position
+  const pos = getLastPos();
+  if (pos && getBookById(pos.bookId)) $('btn-start-resume').style.display = '';
 })();
 </script>
 </body>
