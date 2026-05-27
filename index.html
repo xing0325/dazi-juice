@@ -235,6 +235,36 @@
   .char.pop { animation: char-pop 260ms; }
   .char.space { opacity: 0.3; }
 
+  /* ========== FLOW layout (Monkeytype 3-line) ========== */
+  .text-area.flow {
+    max-height: none;
+    height: 156px;            /* ~3 lines at 27px * 1.9 */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .para {
+    display: block;
+    font-size: 27px;
+    line-height: 1.9;
+    margin: 0;
+    padding: 0;
+    color: var(--dim);
+    letter-spacing: 1px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-align: center;
+  }
+  /* In flow mode chars are uniform: untyped dim, correct bright, wrong red */
+  .text-area.flow .char { color: var(--dim); opacity: 1; }
+  .text-area.flow .char.done.correct { color: var(--fg); opacity: 1; }
+  .text-area.flow .char.done.wrong {
+    color: var(--wrong); opacity: 1;
+    text-decoration: underline wavy var(--wrong);
+    text-decoration-thickness: 1px;
+  }
+  .text-area.flow .char.current { color: var(--fg); }
+
   /* ========== Smooth floating caret ========== */
   #caret {
     position: fixed;
@@ -651,6 +681,7 @@
   </div>
   <div class="controls">
     <button id="btn-library">📚 文章库</button>
+    <button id="btn-layout" title="排版：三行滚动（Monkeytype 式）/ 整句浮动">📃 三行</button>
     <button id="btn-time" title="时限模式：到点自动结算">⏱ 全文</button>
     <button id="btn-noPunct" title="无标点模式：把所有标点变成空格">，→␣</button>
     <button id="btn-theme" title="主题切换">🎨 深</button>
@@ -794,8 +825,11 @@ const state = {
   finished: false,
   muted: false,
   noPunct: false,
+  layout: 'flow',   // 'flow' (Monkeytype 3-line) | 'phrase' (one phrase per line, floating)
   themeIdx: 0,
   timeModeIdx: 0,
+  hardBreaks: null,
+  phraseBreaks: null,
   cpmHistory: [],   // [{ t: seconds, cpm }]
   lastSampleT: -1,
   comboTimer: null,
@@ -897,6 +931,14 @@ function saveMuted(v) {
 function saveNoPunct(v) {
   const data = loadAll(); data.noPunct = v; saveAll(data);
 }
+function saveLayout(v) {
+  const data = loadAll(); data.layout = v; saveAll(data);
+}
+function applyLayoutBtn() {
+  const flow = state.layout === 'flow';
+  $('btn-layout').textContent = flow ? '📃 三行' : '📄 整句';
+  $('btn-layout').classList.toggle('active', !flow);
+}
 function saveTheme(idx) {
   const data = loadAll(); data.themeIdx = idx; saveAll(data);
 }
@@ -915,6 +957,7 @@ function applyTheme(idx) {
 // ============================================================
 const $ = (id) => document.getElementById(id);
 const textDisplay = $('text-display');
+const textArea = document.querySelector('.text-area');
 const inputEl = $('input');
 const comboWrap = $('combo-wrap');
 const comboNum = $('combo-num');
@@ -956,6 +999,55 @@ function stripPunctToSpace(text) {
     .trim();
 }
 
+// Single source of truth: build the typed target + two sets of break positions.
+//  - hardBreaks: indices after which a forced line break exists (original \n) -> used by FLOW layout
+//  - phraseBreaks: indices after punctuation/space/\n -> used by PHRASE layout
+function prepareContent(rawContent) {
+  let target = '';
+  const hardBreaks = new Set();
+  const phraseBreaks = new Set();
+  for (let i = 0; i < rawContent.length; i++) {
+    const ch = rawContent[i];
+    if (ch === '\n') {
+      if (target.length > 0) { hardBreaks.add(target.length - 1); phraseBreaks.add(target.length - 1); }
+      continue;
+    }
+    target += ch;
+    if (/[。！？；，、：…,;?!: ]/.test(ch)) phraseBreaks.add(target.length - 1);
+  }
+  target = target.replace(/\s+$/, '');
+  return { target, hardBreaks, phraseBreaks };
+}
+
+// Render state.target into DOM groups (.para for flow, .line for phrase), populating state.chars.
+function renderText(layout) {
+  textDisplay.innerHTML = '';
+  state.chars = new Array(state.target.length);
+  state.lines = [];
+  const breaks = layout === 'phrase' ? state.phraseBreaks : state.hardBreaks;
+  const groupClass = layout === 'phrase' ? 'line' : 'para';
+  let group = null;
+  const newGroup = () => {
+    group = document.createElement('div');
+    group.className = groupClass;
+    group.dataset.line = state.lines.length;
+    state.lines.push(group);
+    textDisplay.appendChild(group);
+  };
+  newGroup();
+  for (let i = 0; i < state.target.length; i++) {
+    const ch = state.target[i];
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.dataset.i = i;
+    if (ch === ' ') { span.innerHTML = '·'; span.classList.add('space'); }
+    else span.textContent = ch;
+    group.appendChild(span);
+    state.chars[i] = span;
+    if (breaks.has(i) && i < state.target.length - 1) newGroup();
+  }
+}
+
 function loadArticle(article) {
   state.article = article;
   // Apply no-punctuation mode: replace all punctuation with spaces before splitting
@@ -967,9 +1059,11 @@ function loadArticle(article) {
     const rep = Math.max(2, Math.ceil(needed / Math.max(rawContent.length, 1)));
     rawContent = Array(rep).fill(rawContent).join('\n');
   }
-  // Build the typing target by joining split lines (drops newlines so indices stay contiguous)
-  const lines = splitToLines(rawContent);
-  state.target = lines.join('');
+  // Build the typed target + break positions (single source of truth)
+  const prepared = prepareContent(rawContent);
+  state.target = prepared.target;
+  state.hardBreaks = prepared.hardBreaks;
+  state.phraseBreaks = prepared.phraseBreaks;
   state.cursor = 0;
   state.correct = 0;
   state.wrong = 0;
@@ -983,32 +1077,14 @@ function loadArticle(article) {
   state.finished = false;
   state.composing = false;
 
-  // Render chars, grouped into lines
-  textDisplay.innerHTML = '';
-  state.chars = new Array(state.target.length);
-  state.lines = [];
+  // Render according to current layout mode
+  const layout = state.layout || 'flow';
+  textArea.classList.toggle('flow', layout === 'flow');
+  textArea.classList.toggle('phrase', layout === 'phrase');
   textDisplay.style.transform = '';
-  let charIdx = 0;
-  lines.forEach((line, lineIdx) => {
-    const lineEl = document.createElement('div');
-    lineEl.className = 'line';
-    lineEl.dataset.line = lineIdx;
-    for (let k = 0; k < line.length; k++) {
-      const ch = line[k];
-      const span = document.createElement('span');
-      span.className = 'char';
-      span.dataset.i = charIdx;
-      if (ch === ' ') { span.innerHTML = '·'; span.classList.add('space'); }
-      else { span.textContent = ch; }
-      lineEl.appendChild(span);
-      state.chars[charIdx] = span;
-      charIdx++;
-    }
-    state.lines.push(lineEl);
-    textDisplay.appendChild(lineEl);
-  });
-  // Mark first line as active, first char as current
-  if (state.lines[0]) state.lines[0].classList.add('active');
+  renderText(layout);
+  // Phrase mode highlights the active line; flow mode does not
+  if (layout === 'phrase' && state.lines[0]) state.lines[0].classList.add('active');
   if (state.chars[0]) state.chars[0].classList.add('current');
 
   $('article-title').textContent = article.title;
@@ -1057,11 +1133,11 @@ function updateCaret() {
 // ============================================================
 const composingHintEl = $('composing-hint');
 function positionComposingHint() {
-  const activeLine = document.querySelector('.line.active');
-  if (!activeLine) return;
-  const rect = activeLine.getBoundingClientRect();
-  composingHintEl.style.top = (rect.bottom + 4) + 'px';
-  composingHintEl.style.left = (rect.left + rect.width / 2) + 'px';
+  const el = state.chars[state.cursor] || state.chars[state.target.length - 1];
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  composingHintEl.style.top = (rect.bottom + 6) + 'px';
+  composingHintEl.style.left = rect.left + 'px';
 }
 inputEl.addEventListener('compositionstart', (e) => {
   state.composing = true;
@@ -1178,7 +1254,8 @@ function evaluate() {
   }
 
   updateStats();
-  scrollTextToCursor();
+  scrollText();
+  repositionInput();
   updateCaret();
   onCombo();
   checkFinish();
@@ -1186,7 +1263,8 @@ function evaluate() {
 
 function refreshLineStates(cursorPos) {
   if (!state.lines) return;
-  // Find which line contains cursorPos based on the .char data-i ranges
+  // Only PHRASE layout highlights the active line / fades done lines.
+  if ((state.layout || 'flow') !== 'phrase') return;
   let activeLine = null;
   for (let li = 0; li < state.lines.length; li++) {
     const line = state.lines[li];
@@ -1202,28 +1280,43 @@ function refreshLineStates(cursorPos) {
       activeLine = line;
     }
   }
-  // If cursor at end (== target.length), mark last line active too
   if (!activeLine && state.lines.length) {
-    const last = state.lines[state.lines.length - 1];
-    last.classList.add('active');
-    activeLine = last;
+    state.lines[state.lines.length - 1].classList.add('active');
   }
-  repositionInput(activeLine);
 }
 
-function repositionInput(activeLine) {
+// Position the invisible input (and IME candidate anchor) right under the current char.
+function repositionInput() {
   const wrap = document.getElementById('input-wrap');
-  if (!wrap) return;
-  const line = activeLine || document.querySelector('.line.active');
-  if (!line) return;
-  const rect = line.getBoundingClientRect();
-  // Place under the active line, centered horizontally
+  if (!wrap || !state.article) return;
+  const el = state.chars[state.cursor] || state.chars[state.target.length - 1];
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
   wrap.style.top = (rect.bottom + 2) + 'px';
-  wrap.style.left = rect.left + 'px';
-  wrap.style.width = rect.width + 'px';
+  wrap.style.left = (rect.left - 90) + 'px';
+  wrap.style.width = '220px';
 }
 
-function scrollTextToCursor() {
+function scrollText() {
+  if ((state.layout || 'flow') === 'phrase') scrollPhrase();
+  else scrollFlow();
+}
+
+// FLOW layout: keep ~3 lines visible, cursor stays on the 2nd visible row, scroll a line at a time.
+function scrollFlow() {
+  const el = state.chars[state.cursor] || state.chars[state.target.length - 1];
+  const firstChar = state.chars[0];
+  if (!el || !firstChar || !state.lines[0]) return;
+  let lineH = parseFloat(getComputedStyle(state.lines[0]).lineHeight);
+  if (!lineH || isNaN(lineH)) lineH = el.getBoundingClientRect().height * 1.8 || 46;
+  // Row index of cursor relative to first char (transform-independent: both share the same transform)
+  const row = Math.round((el.getBoundingClientRect().top - firstChar.getBoundingClientRect().top) / lineH);
+  const offset = Math.max(0, row - 1) * lineH;
+  textDisplay.style.transform = `translateY(${-offset}px)`;
+}
+
+// PHRASE layout: keep the active line at ~35% from the top of the window.
+function scrollPhrase() {
   const el = state.chars[state.cursor] || state.chars[state.target.length - 1];
   if (!el) return;
   const wrap = textDisplay.parentElement;
@@ -1233,12 +1326,9 @@ function scrollTextToCursor() {
   const rel = elRect.top - wrapRect.top;
   const target = wrapRect.height * 0.35;
   if (rel > target + 80) {
-    const delta = rel - target;
-    textDisplay.style.transform = `translateY(${currentY - delta}px)`;
+    textDisplay.style.transform = `translateY(${currentY - (rel - target)}px)`;
   } else if (rel < -20) {
-    // scrolled too far up after backspace; pull back
-    const delta = target - rel;
-    textDisplay.style.transform = `translateY(${currentY + delta}px)`;
+    textDisplay.style.transform = `translateY(${currentY + (target - rel)}px)`;
   }
 }
 
@@ -1550,6 +1640,12 @@ $('btn-noPunct').onclick = () => {
   saveNoPunct(state.noPunct);
   if (state.article) loadArticle(state.article);
 };
+$('btn-layout').onclick = () => {
+  state.layout = state.layout === 'flow' ? 'phrase' : 'flow';
+  applyLayoutBtn();
+  saveLayout(state.layout);
+  if (state.article) loadArticle(state.article);
+};
 $('btn-theme').onclick = () => {
   state.themeIdx = (state.themeIdx + 1) % THEMES.length;
   applyTheme(state.themeIdx);
@@ -1618,11 +1714,13 @@ document.addEventListener('keydown', (e) => {
   const data = loadAll();
   state.muted = !!data.muted;
   state.noPunct = !!data.noPunct;
+  state.layout = (data.layout === 'phrase') ? 'phrase' : 'flow';
   state.themeIdx = Number.isInteger(data.themeIdx) ? data.themeIdx : 0;
   state.timeModeIdx = Number.isInteger(data.timeModeIdx) ? data.timeModeIdx : 0;
   state.maxCorrectPrefix = 0;
   $('btn-mute').textContent = state.muted ? '🔇' : '🔊';
   $('btn-noPunct').classList.toggle('active', state.noPunct);
+  applyLayoutBtn();
   applyTheme(state.themeIdx);
   const tm = TIME_MODES[state.timeModeIdx];
   $('btn-time').textContent = tm.label;
